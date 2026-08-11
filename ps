@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Python Sandbox</title>
+<style>
+  :root{
+    --ink:#1c2430;
+    --paper:#f6f3ec;
+    --panel:#232b38;
+    --panel-line:#334157;
+    --accent:#c76b3f;
+    --accent-soft:#e8c9b4;
+    --good:#4f9d6e;
+    --bad:#d1554a;
+    --mono: 'SFMono-Regular', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+    --sans: 'Iowan Old Style', 'Georgia', serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink);
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding:10px 16px;
+    border-bottom:2px solid var(--ink);
+    background:var(--paper);
+    flex-shrink:0;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand .mark{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    border:1px solid var(--accent);
+    padding:2px 6px;
+    border-radius:3px;
+  }
+  .brand h1{
+    font-size:18px;
+    margin:0;
+    font-weight:600;
+    letter-spacing:.01em;
+  }
+  #status{
+    font-family:var(--mono);
+    font-size:11px;
+    color:#6b7280;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  #status .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:#c9a227;
+    transition:background .2s;
+  }
+  #status.ready .dot{background:var(--good);}
+  #status.error .dot{background:var(--bad);}
+
+  main{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+  .pane{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .pane + .pane{
+    border-left:2px solid var(--ink);
+  }
+  .pane-head{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:#8a8f98;
+    padding:8px 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-shrink:0;
+  }
+  .pane-head.dark{
+    background:var(--panel);
+    color:#9aa5b5;
+    border-bottom:1px solid var(--panel-line);
+  }
+
+  #editor-wrap{
+    flex:1;
+    position:relative;
+    background:#fff;
+    min-height:0;
+  }
+  #editor{
+    width:100%;
+    height:100%;
+    resize:none;
+    border:none;
+    outline:none;
+    padding:14px 14px 14px 52px;
+    font-family:var(--mono);
+    font-size:14.5px;
+    line-height:1.55;
+    color:#1c2430;
+    background:transparent;
+    position:relative;
+    z-index:2;
+    white-space:pre;
+    overflow:auto;
+    tab-size:4;
+  }
+  #line-numbers{
+    position:absolute;
+    left:0;top:0;
+    width:38px;
+    height:100%;
+    padding:14px 0 14px 0;
+    font-family:var(--mono);
+    font-size:14.5px;
+    line-height:1.55;
+    color:#c3c7cf;
+    text-align:right;
+    padding-right:8px;
+    user-select:none;
+    z-index:1;
+    overflow:hidden;
+    border-right:1px solid #ececec;
+  }
+
+  .toolbar{
+    display:flex;
+    gap:8px;
+    padding:10px 14px;
+    border-top:1px solid #e4e0d5;
+    flex-shrink:0;
+    align-items:center;
+  }
+  button{
+    font-family:var(--mono);
+    font-size:12.5px;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    border:1.5px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    padding:8px 16px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:transform .08s ease, background .15s ease;
+  }
+  button:hover:not(:disabled){ background:#333f52; }
+  button:active:not(:disabled){ transform:translateY(1px); }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+  button.secondary{
+    background:transparent;
+    color:var(--ink);
+  }
+  button.secondary:hover:not(:disabled){ background:#eee8d9; }
+  .hint{
+    font-family:var(--mono);
+    font-size:11px;
+    color:#9a9488;
+    margin-left:auto;
+  }
+
+  #console{
+    flex:1;
+    background:var(--panel);
+    color:#e7ebf1;
+    font-family:var(--mono);
+    font-size:13.5px;
+    line-height:1.6;
+    padding:14px;
+    overflow:auto;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  #console .line-out{ color:#e7ebf1; }
+  #console .line-err{ color:#ff9a8f; }
+  #console .line-sys{ color:#7e93b8; font-style:italic; }
+  #console .prompt{ color:var(--accent-soft); }
+
+  kbd{
+    font-family:var(--mono);
+    background:#eee8d9;
+    border:1px solid #d8d0bc;
+    border-radius:3px;
+    padding:1px 5px;
+    font-size:11px;
+  }
+
+  @media (max-width: 720px){
+    main{flex-direction:column;}
+    .pane + .pane{ border-left:none; border-top:2px solid var(--ink); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">PY3</span>
+    <h1>Python Sandbox</h1>
+  </div>
+  <div id="status"><span class="dot"></span><span id="status-text">Booting Python…</span></div>
+</header>
+
+<main>
+  <section class="pane">
+    <div class="pane-head">
+      <span>editor</span>
+      <span id="line-count">1 line</span>
+    </div>
+    <div id="editor-wrap">
+      <div id="line-numbers">1</div>
+      <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"
+        placeholder="print('hello, detective')"># write your Python here
+print('hello, detective')</textarea>
+    </div>
+    <div class="toolbar">
+      <button id="run-btn" disabled>Run</button>
+      <button id="clear-code-btn" class="secondary">Clear code</button>
+      <button id="clear-console-btn" class="secondary">Clear output</button>
+      <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</span>
+    </div>
+  </section>
+
+  <section class="pane">
+    <div class="pane-head dark">
+      <span>output</span>
+      <span id="run-state"></span>
+    </div>
+    <div id="console"><span class="line-sys">Nothing has run yet. Write some code and press Run.</span></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+  const editor = document.getElementById('editor');
+  const lineNumbers = document.getElementById('line-numbers');
+  const lineCount = document.getElementById('line-count');
+  const consoleEl = document.getElementById('console');
+  const runBtn = document.getElementById('run-btn');
+  const clearCodeBtn = document.getElementById('clear-code-btn');
+  const clearConsoleBtn = document.getElementById('clear-console-btn');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('status-text');
+  const runState = document.getElementById('run-state');
+
+  function updateLineNumbers(){
+    const lines = editor.value.split('\n').length;
+    let out = '';
+    for(let i=1;i<=lines;i++) out += i + '\n';
+    lineNumbers.textContent = out;
+    lineCount.textContent = lines + (lines === 1 ? ' line' : ' lines');
+  }
+  editor.addEventListener('input', updateLineNumbers);
+  editor.addEventListener('scroll', () => { lineNumbers.scrollTop = editor.scrollTop; });
+  updateLineNumbers();
+
+  // Tab key inserts spaces instead of moving focus
+  editor.addEventListener('keydown', (e) => {
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const start = editor.selectionStart, end = editor.selectionEnd;
+      editor.value = editor.value.slice(0,start) + '    ' + editor.value.slice(end);
+      editor.selectionStart = editor.selectionEnd = start + 4;
+      updateLineNumbers();
+    }
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+      e.preventDefault();
+      runCode();
+    }
+  });
+
+  function appendLine(text, cls){
+    const span = document.createElement('span');
+    span.className = cls || 'line-out';
+    span.textContent = text;
+    consoleEl.appendChild(span);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function clearConsole(placeholderText){
+    consoleEl.innerHTML = '';
+    if(placeholderText) appendLine(placeholderText, 'line-sys');
+  }
+
+  clearCodeBtn.addEventListener('click', () => {
+    editor.value = '';
+    updateLineNumbers();
+    editor.focus();
+  });
+  clearConsoleBtn.addEventListener('click', () => {
+    clearConsole('Output cleared.');
+  });
+
+  let pyodideReady = false;
+  let pyodide = null;
+
+  async function boot(){
+    try{
+      pyodide = await loadPyodide();
+      pyodide.setStdout({ batched: (s) => appendLine(s, 'line-out') });
+      pyodide.setStderr({ batched: (s) => appendLine(s, 'line-err') });
+      pyodideReady = true;
+      statusEl.classList.add('ready');
+      statusText.textContent = 'Ready';
+      runBtn.disabled = false;
+      clearConsole('Python is ready. Write some code and press Run.');
+    }catch(err){
+      statusEl.classList.add('error');
+      statusText.textContent = 'Failed to load';
+      clearConsole('Could not load the Python engine. Check your internet connection and reload the page.');
+      console.error(err);
+    }
+  }
+  boot();
+
+  async function runCode(){
+    if(!pyodideReady) return;
+    const code = editor.value;
+    runBtn.disabled = true;
+    runState.textContent = 'running…';
+    clearConsole();
+    try{
+      await pyodide.runPythonAsync(code);
+      if(consoleEl.children.length === 0){
+        appendLine('(ran with no output)', 'line-sys');
+      }
+    }catch(err){
+      appendLine(String(err), 'line-err');
+    }finally{
+      runBtn.disabled = false;
+      runState.textContent = '';
+    }
+  }
+  runBtn.addEventListener('click', runCode);
+</script>
+</body>
+</html>
