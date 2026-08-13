@@ -296,7 +296,10 @@ print('hello, detective')</textarea>
   function appendLine(text, cls){
     const span = document.createElement('span');
     span.className = cls || 'line-out';
-    span.textContent = text;
+    // Pyodide's batched stdout/stderr callbacks deliver each flushed line
+    // WITHOUT its trailing newline, so we add one back here. Without this,
+    // back-to-back print() statements render glued together on one line.
+    span.textContent = text + '\n';
     consoleEl.appendChild(span);
     consoleEl.scrollTop = consoleEl.scrollHeight;
   }
@@ -318,9 +321,19 @@ print('hello, detective')</textarea>
   let pyodideReady = false;
   let pyodide = null;
 
+  function withTimeout(promise, ms){
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+  }
+
   async function boot(){
     try{
-      pyodide = await loadPyodide();
+      if(typeof loadPyodide !== 'function'){
+        throw new Error('missing-loader');
+      }
+      pyodide = await withTimeout(loadPyodide(), 25000);
       pyodide.setStdout({ batched: (s) => appendLine(s, 'line-out') });
       pyodide.setStderr({ batched: (s) => appendLine(s, 'line-err') });
       pyodideReady = true;
@@ -331,7 +344,12 @@ print('hello, detective')</textarea>
     }catch(err){
       statusEl.classList.add('error');
       statusText.textContent = 'Failed to load';
-      clearConsole('Could not load the Python engine. Check your internet connection and reload the page.');
+      clearConsole(
+        'Could not load the Python engine. If you are viewing this inside a preview panel, ' +
+        'download this file and open it directly in a browser tab instead (double-click the ' +
+        'downloaded .html file, or drag it into Chrome/Edge). Some preview panels block the ' +
+        'network download Python needs the first time it loads.'
+      );
       console.error(err);
     }
   }
