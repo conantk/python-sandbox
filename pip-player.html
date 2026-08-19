@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch Video</title>
+<style>
+  :root {
+    --bg: #1a1d29;
+    --card: #242837;
+    --accent: #5b8def;
+    --accent-hover: #4a7ad9;
+    --text: #e8eaf0;
+    --text-dim: #9aa0b4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    padding: 20px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 720px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: var(--text);
+  }
+  video {
+    width: 100%;
+    border-radius: 10px;
+    background: black;
+    display: block;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button:hover { background: var(--accent-hover); }
+  button:disabled {
+    background: #3a3f52;
+    color: var(--text-dim);
+    cursor: not-allowed;
+  }
+  .status {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    min-height: 1.2em;
+  }
+  .missing {
+    text-align: center;
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div id="app"></div>
+</div>
+
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get('src');
+  const title = params.get('title') || 'Video';
+  const app = document.getElementById('app');
+
+  if (!src) {
+    app.innerHTML = `
+      <div class="missing">
+        <h1>No video specified</h1>
+        <p style="color: var(--text-dim); font-size: 0.9rem;">
+          Add <code>?src=your-video.mp4</code> to the end of this page's URL.<br>
+          Example: <code>pip-player.html?src=lesson1.mp4&title=Lesson%201</code>
+        </p>
+      </div>`;
+    return;
+  }
+
+  app.innerHTML = `
+    <h1>${title}</h1>
+    <video id="vid" controls playsinline>
+      <source src="${src}">
+      Your browser doesn't support this video format.
+    </video>
+    <div class="controls">
+      <button id="pipBtn">Watch in Floating Window</button>
+    </div>
+    <div class="status" id="status"></div>
+  `;
+
+  const vid = document.getElementById('vid');
+  const pipBtn = document.getElementById('pipBtn');
+  const status = document.getElementById('status');
+
+  if (!document.pictureInPictureEnabled) {
+    pipBtn.disabled = true;
+    status.textContent = "Your browser doesn't support floating video windows. Try Chrome, Edge, or Firefox.";
+  }
+
+  pipBtn.addEventListener('click', async () => {
+    try {
+      if (vid.paused) {
+        await vid.play();
+      }
+      await vid.requestPictureInPicture();
+      status.textContent = 'Playing in floating window — you can switch tabs freely.';
+    } catch (err) {
+      status.textContent = 'Could not open floating window: ' + err.message;
+    }
+  });
+
+  vid.addEventListener('leavepictureinpicture', () => {
+    status.textContent = '';
+  });
+})();
+</script>
+
+</body>
+</html>
